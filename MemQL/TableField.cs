@@ -14,6 +14,18 @@ namespace MemQL
 
         Dictionary<object, unequalData> etcMapper;
 
+        Type fieldType;
+
+        internal Type FieldType
+        {
+            get { return fieldType; }
+        }
+
+        public TableField( Type fd )
+        {
+            fieldType = fd;
+        }
+
         internal void Add(object data, object refRecord)
         {
             List<object> recordList;
@@ -51,8 +63,14 @@ namespace MemQL
             }
         }
 
-        internal List<object> GetByKey( object key )
+        internal List<object> GetByKey( object key, Type keyType )
         {
+            // 如果字段是枚举, 将key(用户输入)转为枚举
+            if ( keyType.IsEnum )
+            {
+                key = Enum.ToObject(keyType, key);
+            }
+
             List<object> ret;
             if (equalMapper.TryGetValue( key, out ret ))
             {
@@ -85,10 +103,11 @@ namespace MemQL
             {
                 case MatchType.Equal:
                     {
-                        var v = GetByKey(data);
+                        var v = GetByKey(data, this.fieldType );
                         if ( v != null )
                         {
-                            AddListToResult(q, v );                        }
+                            AddListToResult(q, v );
+                        }
                     }
                     break;
                 case MatchType.NotEqual:
@@ -113,46 +132,12 @@ namespace MemQL
                             return;
                         }
 
-                        // 暴力匹配
-                        var vdata = (int)data;
+                        // 暴力匹配                        
                         foreach( var kv in equalMapper )
                         {
-                            var key = (int)kv.Key;
-
-                            switch (t)
+                            if (Compare(t, kv.Key, data))
                             {
-                                case MatchType.Great:
-                                    {
-                                        if ( key > vdata )
-                                        {
-                                            AddListToResult(q, kv.Value);
-                                        }
-                                    }
-                                    break;
-                                case MatchType.GreatEqual:
-                                    {
-                                        if (key >= vdata)
-                                        {
-                                            AddListToResult(q, kv.Value);
-                                        }
-                                    }
-                                    break;
-                                case MatchType.Less:
-                                    {
-                                        if (key < vdata)
-                                        {
-                                            AddListToResult(q, kv.Value);
-                                        }
-                                    }
-                                    break;
-                                case MatchType.LessEqual:
-                                    {
-                                        if (key <= vdata)
-                                        {
-                                            AddListToResult(q, kv.Value);
-                                        }
-                                    }
-                                    break;
+                                AddListToResult(q, kv.Value);
                             }
                         }
 
@@ -162,10 +147,74 @@ namespace MemQL
             }
         }
 
+        static bool Compare( MatchType t, object tabData, object userExpect )
+        {
+            if (tabData is Int32)
+            {
+                var tabDataT = (Int32)tabData;
+                var userExpectT = (Int32)userExpect;
+                
+                switch( t )
+                {
+                    case MatchType.Less:
+                        return tabDataT < userExpectT;
+                    case MatchType.LessEqual:
+                        return tabDataT <= userExpectT;
+                    case MatchType.Great:
+                        return tabDataT > userExpectT;
+                    case MatchType.GreatEqual:
+                        return tabDataT >= userExpectT;
+                }
+            }
+            else if (tabData is Int64)
+            {
+                var tabDataT = (Int64)tabData;
+                var userExpectT = (Int64)userExpect;
+
+                switch (t)
+                {
+                    case MatchType.Less:
+                        return tabDataT < userExpectT;
+                    case MatchType.LessEqual:
+                        return tabDataT <= userExpectT;
+                    case MatchType.Great:
+                        return tabDataT > userExpectT;
+                    case MatchType.GreatEqual:
+                        return tabDataT >= userExpectT;
+                }
+            }
+            else if ( tabData.GetType().IsEnum )
+            {
+                var tabDataT = (Int32)tabData;
+                var userExpectT = (Int32)userExpect;
+
+                switch (t)
+                {
+                    case MatchType.Less:
+                        return tabDataT < userExpectT;
+                    case MatchType.LessEqual:
+                        return tabDataT <= userExpectT;
+                    case MatchType.Great:
+                        return tabDataT > userExpectT;
+                    case MatchType.GreatEqual:
+                        return tabDataT >= userExpectT;
+                }
+
+            }
+
+            return false;
+        }
+
         bool MatchByIndex( Query q, MatchType t, object data )
         {
             if (etcMapper == null)
                 return false;
+
+            // 字段是枚举, 需要将外部的枚举转为整形
+            if ( fieldType.IsEnum )
+            {
+                data = Convert.ToInt32(data);
+            }
 
             unequalData ud;
             if (etcMapper.TryGetValue( data, out ud ))
@@ -177,11 +226,11 @@ namespace MemQL
                 }
 
                 AddListToResult(q, typeList);
-                    
+                return true;                    
             }
 
 
-            return true;
+            return false;
         }
 
     }

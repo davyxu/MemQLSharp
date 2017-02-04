@@ -11,9 +11,10 @@ namespace MemQL
 
         public Table( Type userStructType )
         {
+            // 遍历表格结构体字段, 生成字段
             foreach( var fd in userStructType.GetFields() )
             {
-                var tf = new TableField();
+                var tf = new TableField(fd.FieldType);
                 fields.Add(tf);
                 fieldByName.Add(fd.Name, tf );
             }
@@ -85,77 +86,67 @@ namespace MemQL
             // 遍历实际访问的数值
             for( int i = begin; i <= end;i++)
             {
+                var indexList = new List<object>();
+
                 switch( matchType )
                 {
                     case MatchType.NotEqual:
                         {
-                            var indexList = new List<object>();
-                            for (int j = i;j<=end;j++){
+                            for (int j = i;j<=end;j++)
+                            {
                                 if (j == i)
                                     continue;
 
-                                var list = field.GetByKey(j);
+                                var list = field.GetByKey(j, field.FieldType);
                                 indexList.AddRange(list);
-                            }
-
-                            field.AddIndexData(matchType, i, indexList);
+                            }                            
                         }
                         break;
                     case MatchType.Great:
-                        {
-                            var indexList = new List<object>();
+                        {                            
                             // 大于当前值的所有列表合并
                             for (int j = i + 1; j <= end; j++)
                             {
-                                var list = field.GetByKey(j);
+                                var list = field.GetByKey(j, field.FieldType);
                                 indexList.AddRange(list);
                             }
-
-                            field.AddIndexData(matchType, i, indexList);
+                         
                         }
                         break;
                     case MatchType.GreatEqual:
-                        {
-                            var indexList = new List<object>();
+                        {                            
                             // 大于等于当前值的所有列表合并
                             for (int j = i; j <= end; j++)
                             {
-                                var list = field.GetByKey(j);
+                                var list = field.GetByKey(j, field.FieldType);
                                 indexList.AddRange(list);
-                            }
-
-                            field.AddIndexData(matchType, i, indexList);
+                            }                         
                         }
                         break;
                     case MatchType.Less:
-                        {
-                            var indexList = new List<object>();
-                            
+                        {                               
                             for (int j = begin; j < i; j++)
                             {
-                                var list = field.GetByKey(j);
+                                var list = field.GetByKey(j, field.FieldType);
                                 indexList.AddRange(list);
                             }
-
-                            field.AddIndexData(matchType, i, indexList);
                         }
                         break;
                     case MatchType.LessEqual:
-                        {
-                            var indexList = new List<object>();
-
+                        {                            
                             for (int j = begin; j <= i; j++)
                             {
-                                var list = field.GetByKey(j);
+                                var list = field.GetByKey(j, field.FieldType);
                                 indexList.AddRange(list);
                             }
-
-                            field.AddIndexData(matchType, i, indexList);
                         }
                         break;
                 }
+
+                field.AddIndexData(matchType, i, indexList);
             }
                 
         }
+
     }
 }

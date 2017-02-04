@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
 
 namespace MemQL
 {
@@ -17,7 +16,7 @@ namespace MemQL
         public object Value;
     }
 
-    public delegate int ValueCompareCallback(object x, object y);
+    
 
     public class Query
     {
@@ -34,25 +33,17 @@ namespace MemQL
             this.tab = tab;
         }
 
-        // 添加数据, 自动去重, 生成结果
-        internal void Add( object data )
+        public void Reset( )
         {
-            mergeData md;
-            if (!mergeDataByData.TryGetValue(data, out md ))
-            {
-                md = new mergeData();
-                md.Data = data;
-                mergeDataByData[data] = md;
-            }
-
-            md.Count++;
-
-            // 求叉集
-            if (md.Count >= conditions.Count)
-            {
-                result[data] = md.Data;
-            }
+            done = false;
+            sortor = null;
+            limit = -1;
+            conditions.Clear();
+            result.Clear();
+            mergeDataByData.Clear();
         }
+
+
 
         public Query Where( string fieldName, string matchTypeStr, object value )
         {
@@ -64,7 +55,7 @@ namespace MemQL
 
             var con = new Condition
             {
-                Field = tab.FieldByName( fieldName),
+                Field = tab.FieldByName( fieldName ),
                 Type = matchType, 
                 Value= value,
             };
@@ -90,13 +81,33 @@ namespace MemQL
             this.limit = count;
 
             return this;
-        }
+        }        
 
         public Query SortBy( Comparison<object> callback )
         {
             sortor = callback;
 
             return this;
+        }
+
+        // 添加数据, 自动去重, 生成结果
+        internal void Add(object data)
+        {
+            mergeData md;
+            if (!mergeDataByData.TryGetValue(data, out md))
+            {
+                md = new mergeData();
+                md.Data = data;
+                mergeDataByData[data] = md;
+            }
+
+            md.Count++;
+
+            // 求叉集
+            if (md.Count >= conditions.Count)
+            {
+                result[data] = md.Data;
+            }
         }
 
         void Do( )
